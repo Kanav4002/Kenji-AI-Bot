@@ -94,10 +94,50 @@ export default function SettingsModal({
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert("Image is too large. Please select an image under 10MB.");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
-        const imageData = event.target?.result as string;
-        setProfileImageState(imageData);
+        const img = new Image();
+        img.onload = () => {
+          // Create a canvas to resize the image
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Calculate the new dimensions (max 300px width/height)
+          const maxSize = 300;
+          if (width > height) {
+            if (width > maxSize) {
+              height = Math.round(height * (maxSize / width));
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = Math.round(width * (maxSize / height));
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw the resized image
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Get compressed image as a data URL
+            const compressedImage = canvas.toDataURL('image/jpeg', 0.7); // Use JPEG with 70% quality
+            
+            // Set the compressed image
+            setProfileImageState(compressedImage);
+          }
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }

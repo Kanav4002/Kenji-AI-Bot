@@ -1,4 +1,4 @@
-import { Search, AlertTriangle, Trash2, Moon, Sun } from "lucide-react";
+import { Search, Trash2, Moon, Sun } from "lucide-react";
 
 type ChatHeaderProps = {
   onClearChat: () => void;
@@ -12,10 +12,6 @@ export default function ChatHeader({ onClearChat, onSearch, darkMode, onToggleTh
     <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-100 bg-white'}`}>
       <div className="w-8"></div> {/* Spacer */}
       <div className="flex items-center gap-4">
-        <button className="text-[#ffa78d]">
-          <AlertTriangle className="w-5 h-5" />
-        </button>
-
         <button 
           onClick={onClearChat}
           className={darkMode ? "text-gray-300" : "text-gray-500"}

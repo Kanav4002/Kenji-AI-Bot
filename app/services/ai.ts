@@ -1,4 +1,4 @@
-const API_KEY = "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";
+const API_KEY = "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";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 type Message = {
@@ -8,17 +8,25 @@ type Message = {
 
 export async function getAIResponse(messages: Message[]): Promise<string> {
   try {
+    // Add a system message to instruct proper formatting
+    const messagesWithSystem = [
+      {
+        role: "system" as const,
+        content: "You are an AI assistant. Only use code blocks with ```language syntax when sharing actual code snippets. For regular text responses, do not use code formatting."
+      },
+      ...messages
+    ];
+    
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${API_KEY}`,
-        "HTTP-Referer": "http://localhost:3000", // Replace with your actual domain in production
-        "X-Title": "AI Chat Bot"
+        "HTTP-Referer": "http://localhost:3000"
       },
       body: JSON.stringify({
-        model: "deepseek/deepseek-prover-v2",
-        messages: messages,
+        model: "deepseek/deepseek-r1:free",
+        messages: messagesWithSystem,
         temperature: 0.7,
         max_tokens: 1000
       })

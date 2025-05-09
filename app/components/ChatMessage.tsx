@@ -22,6 +22,13 @@ export default function ChatMessage({
   // Add state to track if content is being hovered (for copy button visibility)
   const [isHovered, setIsHovered] = useState(false);
   
+  // Extract code from message if it exists
+  const extractCodeFromMessage = (content: string, language: string): string => {
+    const codeRegex = new RegExp(`\`\`\`${language}\\n([\\s\\S]*?)\`\`\``, 'g');
+    const match = codeRegex.exec(content);
+    return match ? match[1].trim() : content;
+  };
+  
   // Function to detect code blocks and format them
   const formatContent = () => {
     // Check if content contains code
@@ -33,22 +40,32 @@ export default function ChatMessage({
             // Every third element is the code content (after the language and the opening ```)
             if (index % 3 === 2) {
               const language = parts[index - 1] || "text";
+              const codeContent = part.trim();
+              
               return (
                 <div key={index} className="my-2 relative">
-                  <div className="text-xs text-gray-400 mb-1">{language}</div>
-                  <div className="max-w-[90%] md:max-w-[80%] lg:max-w-[70%] overflow-x-auto thin-scrollbar">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <div>{language}</div>
+                    <button 
+                      onClick={() => onCopy(codeContent)}
+                      className="px-2 py-0.5 rounded hover:bg-gray-700 transition-all"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="max-w-full md:max-w-[90%] lg:max-w-[70%] overflow-x-auto thin-scrollbar">
                     <SyntaxHighlighter 
                       language={language} 
                       style={atomOneDark}
                       customStyle={{
                         borderRadius: '0.375rem',
-                        padding: '1rem',
-                        fontSize: '0.875rem',
+                        padding: '0.75rem',
+                        fontSize: '0.75rem',
                         width: '100%',
                       }}
                       wrapLongLines={false}
                     >
-                      {part.trim()}
+                      {codeContent}
                     </SyntaxHighlighter>
                   </div>
                 </div>
@@ -103,17 +120,17 @@ export default function ChatMessage({
   };
 
   return isUser ? (
-    <div className="flex items-start gap-4 max-w-3xl ml-auto">
+    <div className="flex items-start gap-2 sm:gap-4 max-w-full sm:max-w-3xl ml-auto">
       <div className="flex-1">
         <div 
-          className={`${darkMode ? 'bg-blue-900' : 'bg-[#f2f6fa]'} p-4 rounded-lg relative`}
+          className={`${darkMode ? 'bg-blue-900 text-white' : 'bg-[#f2f6fa] text-gray-800'} p-2 sm:p-4 rounded-lg relative`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className={`text-${darkMode ? 'gray-100' : 'gray-800'}`}>
+          <div className="w-full break-words text-sm sm:text-base">
             {formatContent()}
           </div>
-          {isHovered && (
+          {isHovered && !content.includes("```") && (
             <button 
               onClick={() => onCopy(content)}
               className="absolute top-2 right-2 bg-gray-700 bg-opacity-50 p-1 rounded hover:bg-opacity-70 transition-all"
@@ -124,7 +141,7 @@ export default function ChatMessage({
         </div>
       </div>
       <div className="flex flex-col items-center">
-        <div className="w-8 h-8 rounded-md overflow-hidden">
+        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md overflow-hidden">
           {userProfileImage ? (
             <img src={userProfileImage} alt="User avatar" className="w-full h-full object-cover" />
           ) : (
@@ -134,20 +151,20 @@ export default function ChatMessage({
       </div>
     </div>
   ) : (
-    <div className="flex items-start gap-4 max-w-2xl">
-      <div className="w-8 h-8 rounded-md overflow-hidden bg-[#96e7e5] flex items-center justify-center">
-        <span className="text-[#082567] text-xs">AI</span>
+    <div className="flex items-start gap-2 sm:gap-4 max-w-full sm:max-w-2xl">
+      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md overflow-hidden bg-[#96e7e5] flex items-center justify-center">
+        <span className="text-[#082567] text-xs">Kai</span>
       </div>
       <div className="flex-1">
         <div 
-          className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border p-4 rounded-lg relative`}
+          className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border p-2 sm:p-4 rounded-lg relative`}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className={`${darkMode ? 'text-gray-100' : 'text-gray-700'} w-full break-words`}>
+          <div className={`${darkMode ? 'text-gray-100' : 'text-gray-700'} w-full break-words text-sm sm:text-base`}>
             {formatContent()}
           </div>
-          {isHovered && (
+          {isHovered && !content.includes("```") && (
             <button 
               onClick={() => onCopy(content)}
               className="absolute top-2 right-2 bg-gray-700 bg-opacity-50 p-1 rounded hover:bg-opacity-70 transition-all"

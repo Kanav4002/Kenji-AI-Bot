@@ -9,6 +9,7 @@ import ChatInput from "./components/ChatInput";
 import LoginModal from "./components/LoginModal";
 import { getAIResponse } from "./services/ai";
 import SettingsModal from "./components/SettingsModal";
+import { Menu, Sun, Moon } from "lucide-react";
 
 type Message = {
   id: string;
@@ -156,10 +157,24 @@ export default function ChatbotUI() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | "system">("system");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [width, setWidth] = useState(0);
+  const [usersData, setUsersData] = useState<Record<string, User>>({});
   const router = useRouter();
 
   // Initialize with saved data
   useEffect(() => {
+    // Load users data from localStorage
+    const savedUsers = localStorage.getItem('chatbot_users');
+    if (savedUsers) {
+      try {
+        const parsedUsers = JSON.parse(savedUsers);
+        setUsersData(parsedUsers);
+      } catch (e) {
+        console.error('Failed to parse saved users', e);
+      }
+    }
+    
     // Check for saved login
     const savedUser = localStorage.getItem('chatbot_user');
     if (savedUser) {
@@ -400,8 +415,8 @@ export default function ChatbotUI() {
 
   // Function to handle login
   const handleLogin = (username: string, password: string) => {
-    // Check if user exists
-    const user = Object.values(userDatabase).find(user => user.username === username);
+    // Check if user exists in users database
+    const user = usersData[username];
     
     if (user) {
       // In a real app, you would verify password hash here
@@ -409,7 +424,7 @@ export default function ChatbotUI() {
       setIsLoggedIn(true);
       setIsAuthModalOpen(false);
       
-      // Save login info to localStorage (in a real app, you'd use secure HTTP-only cookies)
+      // Save login info to localStorage
       localStorage.setItem('chatbot_user', JSON.stringify(user));
       
       // Notify user
@@ -434,7 +449,7 @@ export default function ChatbotUI() {
   // Function to handle signup
   const handleSignup = (username: string, email: string, password: string) => {
     // Check if username already exists
-    if (Object.values(userDatabase).some(user => user.username === username)) {
+    if (usersData[username]) {
       alert("Username already exists. Please choose a different one.");
       return;
     }
@@ -456,9 +471,15 @@ export default function ChatbotUI() {
       return;
     }
     
-    // In a real app, you would hash the password and call your backend API
+    // In a real app, you would hash the password
     const newUser = { username, email };
-    userDatabase[username] = newUser;
+    
+    // Add user to database
+    const updatedUsers = { ...usersData, [username]: newUser };
+    setUsersData(updatedUsers);
+    
+    // Save users to localStorage
+    localStorage.setItem('chatbot_users', JSON.stringify(updatedUsers));
     
     // Log the user in
     setCurrentUser(newUser);
@@ -536,9 +557,12 @@ export default function ChatbotUI() {
     profileImage?: string | null;
   }) => {
     if (currentUser) {
+      const oldUsername = currentUser.username;
+      const newUsername = data.name || oldUsername;
+      
       const updatedUser = {
         ...currentUser,
-        username: data.name || currentUser.username,
+        username: newUsername,
         email: data.email || currentUser.email,
         phoneNumber: data.phoneNumber,
         profileImage: data.profileImage !== undefined ? data.profileImage : profileImage
@@ -550,6 +574,23 @@ export default function ChatbotUI() {
         setProfileImage(data.profileImage);
       }
       
+      // Update users database if username changed
+      if (newUsername !== oldUsername) {
+        const updatedUsers = { ...usersData };
+        delete updatedUsers[oldUsername];
+        updatedUsers[newUsername] = updatedUser;
+        setUsersData(updatedUsers);
+        localStorage.setItem('chatbot_users', JSON.stringify(updatedUsers));
+      } else {
+        // Just update the existing user
+        const updatedUsers = { 
+          ...usersData, 
+          [newUsername]: updatedUser 
+        };
+        setUsersData(updatedUsers);
+        localStorage.setItem('chatbot_users', JSON.stringify(updatedUsers));
+      }
+      
       // Save to localStorage
       localStorage.setItem('chatbot_user', JSON.stringify(updatedUser));
     }
@@ -557,42 +598,99 @@ export default function ChatbotUI() {
 
   // Function to delete account
   const handleDeleteAccount = () => {
-    // Delete account logic
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    localStorage.removeItem('chatbot_user');
-    localStorage.removeItem('chatbot_chats');
-    setChats([]);
-    setMessages([]);
-    setIsSettingsModalOpen(false);
+    if (currentUser) {
+      const username = currentUser.username;
+      
+      // Remove user from database
+      const updatedUsers = { ...usersData };
+      delete updatedUsers[username];
+      setUsersData(updatedUsers);
+      localStorage.setItem('chatbot_users', JSON.stringify(updatedUsers));
+      
+      // Clear user data
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+      localStorage.removeItem('chatbot_user');
+      localStorage.removeItem('chatbot_chats');
+      setChats([]);
+      setMessages([]);
+      setIsSettingsModalOpen(false);
+    }
   };
 
-  return (
-    <div className={`flex h-screen ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
-      {/* Sidebar */}
-      <Sidebar 
-        onNewChat={handleNewChat}
-        isLoggedIn={isLoggedIn}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
-        onLogout={handleLogout}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
-        darkMode={darkMode}
-        username={currentUser?.username || ""}
-        recentChats={chats}
-        onSelectChat={handleSelectChat}
-        currentChatId={currentChatId}
-        profileImage={profileImage}
-      />
+  useEffect(() => {
+    // Only run on client
+    setWidth(window.innerWidth);
+    
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-      {/* Main chat area - will adapt to sidebar width changes */}
-      <div className="flex-1 flex flex-col transition-all duration-300">
-        {/* Header */}
-        <ChatHeader 
-          onClearChat={handleClearChat} 
-          onSearch={handleSearch}
-          darkMode={darkMode}
-          onToggleTheme={toggleTheme}
-        />
+  return (
+    <div className={`flex flex-col md:flex-row h-screen ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
+      {/* Mobile header - only shows on small screens */}
+      <div className="md:hidden flex items-center justify-between p-3 border-b border-gray-800 bg-[#02040f] sticky top-0 z-10">
+        <button 
+          onClick={() => setMobileMenuOpen(true)}
+          className="p-2 text-white rounded-md hover:bg-gray-800"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-[#96e7e5] to-[#5b5fc7] bg-clip-text text-transparent font-sora">
+          Kai
+        </h1>
+        <button 
+          onClick={toggleTheme}
+          className={`p-2 rounded-full ${darkMode ? "bg-gray-800 text-yellow-300" : "bg-gray-100 text-blue-600"}`}
+        >
+          {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Sidebar - improved mobile overlay */}
+      <div className={`${mobileMenuOpen ? 'fixed inset-0 z-50' : 'hidden'} md:relative md:block md:z-auto md:w-auto`}>
+        {/* Dark overlay behind sidebar on mobile */}
+        {mobileMenuOpen && (
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-70 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          ></div>
+        )}
+        
+        <div className={`relative h-full ml-auto md:ml-0 transition-all duration-300 max-w-[70%] md:max-w-none`}>
+          <Sidebar 
+            onNewChat={handleNewChat}
+            isLoggedIn={isLoggedIn}
+            onOpenAuthModal={() => setIsAuthModalOpen(true)}
+            onLogout={handleLogout}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            darkMode={darkMode}
+            username={currentUser?.username || ""}
+            recentChats={chats.filter(chat => !chat.id.startsWith("prompt"))}
+            onSelectChat={(chatId) => {
+              handleSelectChat(chatId);
+              setMobileMenuOpen(false);
+            }}
+            currentChatId={currentChatId}
+            profileImage={profileImage}
+            onClose={() => setMobileMenuOpen(false)}
+            isMobile={width < 768}
+          />
+        </div>
+      </div>
+
+      {/* Main chat area - better mobile optimization */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header - only shown on desktop */}
+        <div className="hidden md:block">
+          <ChatHeader 
+            onClearChat={handleClearChat} 
+            onSearch={handleSearch}
+            darkMode={darkMode}
+            onToggleTheme={toggleTheme}
+          />
+        </div>
 
         {/* Chat messages */}
         <ChatArea 

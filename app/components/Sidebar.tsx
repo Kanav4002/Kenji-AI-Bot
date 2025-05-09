@@ -1,8 +1,8 @@
 "use client";
 
-import { Menu, Plus, History, ChevronUp, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { Menu, Plus, ChevronUp, ChevronDown, ChevronRight, ChevronLeft, X } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ProfileDropdown from "./ProfileDropdown";
 import ChatHistory from "./ChatHistory";
 
@@ -30,6 +30,8 @@ type SidebarProps = {
   onSelectChat: (chatId: string) => void;
   currentChatId: string | null;
   profileImage?: string | null;
+  onClose?: () => void;
+  isMobile?: boolean;
 };
 
 export default function Sidebar({ 
@@ -43,11 +45,23 @@ export default function Sidebar({
   recentChats,
   onSelectChat,
   currentChatId,
-  profileImage
+  profileImage,
+  onClose,
+  isMobile
 }: SidebarProps) {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [showSamplePrompts, setShowSamplePrompts] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && isClient) {
+      setIsCollapsed(false);
+    }
+  }, [isMobile, isClient]);
 
   const toggleProfileDropdown = () => {
     if (!isLoggedIn) {
@@ -57,102 +71,91 @@ export default function Sidebar({
     }
   };
 
-  const toggleSamplePrompts = () => {
-    setShowSamplePrompts(!showSamplePrompts);
-  };
-
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
     setIsProfileDropdownOpen(false);
   };
 
-  const samplePrompts = [
-    { id: "prompt1", title: "Rephrase text...", preview: "Rephrase this text in a more professional tone" },
-    { id: "prompt2", title: "Fix this code ne...", preview: "Fix this code and explain the issues" },
-    { id: "prompt3", title: "Sample Copy for...", preview: "Generate marketing copy for a new product" }
-  ];
-
-  const handleSamplePrompt = (prompt: string) => {
-    console.log(`Selected prompt: ${prompt}`);
-    onSelectChat(prompt);
-  };
-
   return (
-    <div className={`${isCollapsed ? 'w-16' : 'w-64'} bg-[#02040f] flex flex-col relative transition-all duration-300`}>
-      {/* Logo and hamburger menu */}
-      <div className="p-4 flex items-center justify-between border-b border-[#282934]/30">
-        {/* Logo */}
-        {!isCollapsed && (
-          <div className="flex-1 flex justify-start items-center py-2">
-            <Image
-              src="/logo.png"
-              alt="KENJI"
-              width={120}
-              height={45}
-              className="object-contain"
-            />
-          </div>
-        )}
-        
-        {/* Toggle button */}
-        <button 
-          className={`p-2 rounded border border-white/20 ${isCollapsed ? 'mx-auto' : ''}`}
-          onClick={toggleSidebar}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-5 h-5 text-white" />
-          ) : (
-            <Menu className="w-5 h-5 text-white" />
-          )}
-        </button>
-      </div>
+    <div className={`h-full flex flex-col relative transition-all duration-300 ${
+      isMobile 
+        ? 'bg-[#02040f] w-full max-w-[280px]'
+        : `bg-[#02040f] ${isCollapsed && !isMobile && isClient ? 'w-20' : 'w-64'}`
+    }`}>
+      {/* Mobile header */}
+      {isMobile && (
+        <div className="flex items-center justify-between p-4 border-b border-[#282934]/30">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#96e7e5] to-[#5b5fc7] bg-clip-text text-transparent font-sora">
+            Kai
+          </h1>
+          <button 
+            onClick={onClose}
+            className="p-2 rounded-md border border-gray-600 text-white"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
-      {/* Sidebar menu items */}
-      <div className="flex-1 px-3 py-4 space-y-3 overflow-y-auto">
+      {/* Desktop header - make logo clickable */}
+      {!isMobile && (
+        <div className="p-4 flex items-center justify-between border-b border-[#282934]/30">
+          {/* Clickable logo */}
+          <button
+            onClick={toggleSidebar}
+            className="flex items-center space-x-3"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <h1 className={`${isCollapsed ? 'text-xl' : 'text-2xl'} font-bold bg-gradient-to-r from-[#96e7e5] to-[#5b5fc7] bg-clip-text text-transparent font-sora`}>
+              Kai
+            </h1>
+          </button>
+          
+          {/* Only show close button when sidebar is expanded */}
+          {!isCollapsed && !isMobile && (
+            <button 
+              className="p-2 rounded-md border border-gray-600 text-white"
+              onClick={toggleSidebar}
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* New Chat button - bigger target area on mobile */}
+      <div className={`px-3 py-4 ${isMobile ? 'py-5' : ''}`}>
         <button
           onClick={onNewChat}
-          className={`w-full flex items-center gap-3 px-4 py-3 text-white rounded-md hover:bg-white/5 ${
+          className={`w-full flex items-center gap-3 ${isMobile ? 'py-4' : 'py-3'} px-4 text-white rounded-md bg-[#12152a] hover:bg-[#1a1c2a] transition-colors ${
             isCollapsed ? 'justify-center' : ''
           }`}
         >
-          <Plus className="w-5 h-5" />
-          {!isCollapsed && <span>New Chat</span>}
+          <Plus className={`${isMobile ? 'w-6 h-6' : 'w-5 h-5'}`} />
+          {(!isCollapsed || isMobile) && <span className={isMobile ? 'text-base' : 'text-sm'}>New Chat</span>}
         </button>
+      </div>
 
-        {/* Recent Chats Section - Only show when expanded */}
-        {!isCollapsed && (
+      {/* Chat History - better spacing on mobile */}
+      <div className="flex-1 px-3 overflow-y-auto">
+        {(!isCollapsed || isMobile) && (
           <ChatHistory 
             recentChats={recentChats}
             onSelectChat={onSelectChat}
             currentChatId={currentChatId}
+            isMobile={isMobile}
           />
-        )}
-
-        {/* Sample Prompts Section - Only show when expanded */}
-        {!isCollapsed && (
-          <div className="pt-2">
-            {samplePrompts.map((prompt) => (
-              <button 
-                key={prompt.id}
-                onClick={() => handleSamplePrompt(prompt.id)}
-                className={`w-full text-left px-4 py-3 text-white rounded-md hover:bg-white/5 ${
-                  currentChatId === prompt.id ? "bg-blue-600/20 text-blue-200" : ""
-                }`}
-              >
-                <div className="truncate">{prompt.title}</div>
-                <div className="text-xs text-gray-400 truncate mt-1">{prompt.preview}</div>
-              </button>
-            ))}
-          </div>
         )}
       </div>
 
-      {/* User profile */}
-      <div className="p-4 border-t border-[#282934]/30 relative">
+      {/* User profile - better spacing for mobile */}
+      <div className={`p-4 ${isMobile ? 'p-5' : ''} border-t border-[#282934]/30 relative`}>
         <div 
           onClick={toggleProfileDropdown}
-          className={`flex items-center gap-3 p-2 bg-[#0a0c19] rounded-md cursor-pointer hover:bg-[#12152a] transition-colors ${
-            isCollapsed ? 'justify-center' : ''
+          className={`flex items-center gap-3 p-3 bg-[#0a0c19] rounded-md cursor-pointer hover:bg-[#12152a] transition-colors ${
+            isCollapsed && !isMobile ? 'justify-center' : ''
           }`}
         >
           <div className="relative w-8 h-8 flex-shrink-0">
@@ -163,17 +166,13 @@ export default function Sidebar({
                 className="w-8 h-8 rounded-md object-cover"
               />
             ) : (
-              <Image
-                src="/placeholder.svg"
-                alt="User avatar"
-                width={32}
-                height={32}
-                className="rounded-md"
-              />
+              <div className="w-8 h-8 rounded-md bg-gray-700 flex items-center justify-center text-white">
+                {username ? username.charAt(0).toUpperCase() : "?"}
+              </div>
             )}
           </div>
           
-          {!isCollapsed && (
+          {(!isCollapsed || isMobile) && (
             <>
               <div className="flex-1">
                 <div className="text-xs text-gray-400">
@@ -185,7 +184,7 @@ export default function Sidebar({
               </div>
               
               {isLoggedIn && (
-                <button>
+                <button className="p-1">
                   {isProfileDropdownOpen ? (
                     <ChevronUp className="w-4 h-4 text-white" />
                   ) : (
@@ -197,16 +196,20 @@ export default function Sidebar({
           )}
         </div>
 
+        {/* Profile dropdown - updated positioning */}
         {isLoggedIn && isProfileDropdownOpen && (
-          <div className="absolute z-50 left-full top-0 ml-2">
-            <ProfileDropdown 
-              isOpen={isProfileDropdownOpen}
-              onClose={() => setIsProfileDropdownOpen(false)}
-              onLogout={onLogout}
-              onOpenSettings={onOpenSettings}
-              darkMode={darkMode}
-              isCollapsed={isCollapsed}
-            />
+          <div className="relative">
+            <div className="absolute bottom-full mb-3">
+              <ProfileDropdown 
+                isOpen={isProfileDropdownOpen}
+                onClose={() => setIsProfileDropdownOpen(false)}
+                onLogout={onLogout}
+                onOpenSettings={onOpenSettings}
+                darkMode={darkMode}
+                isCollapsed={isCollapsed && !isMobile}
+                isMobile={isMobile}
+              />
+            </div>
           </div>
         )}
       </div>
