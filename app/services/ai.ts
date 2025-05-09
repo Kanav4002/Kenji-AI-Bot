@@ -1,4 +1,5 @@
-const API_KEY = "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";
+// Use environment variable instead of hardcoded key
+const API_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 type Message = {
@@ -17,12 +18,18 @@ export async function getAIResponse(messages: Message[]): Promise<string> {
       ...messages
     ];
     
+    // Check if API key is available
+    if (!API_KEY) {
+      console.error("OpenRouter API key is missing");
+      return "Error: API key not configured. Please add NEXT_PUBLIC_OPENROUTER_API_KEY to your environment variables.";
+    }
+    
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${API_KEY}`,
-        "HTTP-Referer": "http://localhost:3000"
+        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : "https://kai-bot.vercel.app"
       },
       body: JSON.stringify({
         model: "deepseek/deepseek-r1:free",
